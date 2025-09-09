@@ -104,7 +104,7 @@ with st.sidebar:
         min_d = pd.to_datetime(df[date_col].min()).date()
         max_d = pd.to_datetime(df[date_col].max()).date()
         dr = st.date_input("Rango de fechas", (min_d, max_d))
-        if isinstance(dr, tuple) and len(dr)==2:
+        if isinstance(dr, tuple) and len(dr) == 2:
             df = df[(df[date_col].dt.date >= dr[0]) & (df[date_col].dt.date <= dr[1])]
 
     # Estado y método
@@ -135,7 +135,7 @@ def fmt_num(v, is_amount=False):
     except Exception:
         return str(v)
 
-COUNTRY_LABEL = {57:"Colombia", 52:"México", 51:"Perú"}
+COUNTRY_LABEL = {57: "Colombia", 52: "México", 51: "Perú"}
 
 # ====== 4) KPIs globales ======
 total_val = df[agg_col].sum(min_count=1) if agg_col else float(len(df))
@@ -146,7 +146,7 @@ if has_date and not df.empty:
     date_span = f"{pd.to_datetime(df[date_col].min()).date()} → {pd.to_datetime(df[date_col].max()).date()}"
 
 k1, k2, k3, k4 = st.columns(4)
-k1.metric("Total " + ("Monto" if agg_col==amt_col else "Transacciones"), fmt_num(total_val, agg_col==amt_col))
+k1.metric("Total " + ("Monto" if agg_col == amt_col else "Transacciones"), fmt_num(total_val, agg_col == amt_col))
 k2.metric("Métodos únicos", unique_methods)
 k3.metric("Estados únicos", unique_status)
 k4.metric("Rango de fechas", date_span if date_span else "—")
@@ -163,8 +163,12 @@ preset = {
     "sel_methods": sel_methods,
     "date_enabled": has_date,
 }
-st.download_button("⬇️ Descargar preset (JSON)", data=json.dumps(preset).encode("utf-8"),
-                   file_name="preset_dashboard.json", mime="application/json")
+st.download_button(
+    "⬇️ Descargar preset (JSON)",
+    data=json.dumps(preset).encode("utf-8"),
+    file_name="preset_dashboard.json",
+    mime="application/json",
+)
 
 # ====== 5) Tabs por código + 3 gráficas ======
 if not selected_codes:
@@ -191,10 +195,10 @@ for code, tab in zip(selected_codes, tabs):
                 linefig.update_layout(
                     title="Flujo por estado",
                     xaxis_title="Fecha",
-                    yaxis_title=("Monto" if agg_col==amt_col else "Transacciones"),
+                    yaxis_title=("Monto" if agg_col == amt_col else "Transacciones"),
                     legend_title="Estado",
                     hovermode="x unified",
-                    margin=dict(l=10,r=10,t=60,b=10),
+                    margin=dict(l=10, r=10, t=60, b=10),
                 )
                 st.plotly_chart(linefig, use_container_width=True)
             else:
@@ -217,9 +221,9 @@ for code, tab in zip(selected_codes, tabs):
         )
         barfig.update_layout(
             xaxis_title="Método de pago",
-            yaxis_title=("Monto" if (agg_col and agg_col==amt_col) else "Transacciones"),
+            yaxis_title=("Monto" if (agg_col and agg_col == amt_col) else "Transacciones"),
             legend_title="Estado",
-            margin=dict(l=10,r=10,t=60,b=10),
+            margin=dict(l=10, r=10, t=60, b=10),
         )
         st.plotly_chart(barfig, use_container_width=True)
 
@@ -242,34 +246,50 @@ for code, tab in zip(selected_codes, tabs):
             title="Heatmap métodos × estado",
             xaxis_title="Estado",
             yaxis_title="Método de pago",
-            margin=dict(l=10,r=10,t=60,b=10),
+            margin=dict(l=10, r=10, t=60, b=10),
         )
         st.plotly_chart(heat, use_container_width=True)
 
-        # Top-N métodos (FIX aplicado)
+        # Top-N métodos por total — versión robusta (sin reset_index(names=...))
         st.markdown("#### Top-N métodos por total")
         n_methods = sub[method_col].nunique()
         if n_methods == 0:
             st.info("No hay métodos para este código con los filtros actuales.")
         else:
-            topn = st.slider("N", min_value=1, max_value=max(1, n_methods), value=min(10, n_methods))
+            topn = st.slider("N", min_value=1, max_value=min(50, n_methods), value=min(10, n_methods), key=f"topn_{code}")
+
             if agg_col:
-                totals = sub.groupby(method_col)[agg_col].sum().sort_values(ascending=False).head(topn)
+                totals_df = (
+                    sub.groupby(method_col, as_index=False)[agg_col]
+                      .sum()
+                      .rename(columns={agg_col: "Total"})
+                      .sort_values("Total", ascending=False)
+                      .head(topn)
+                )
             else:
-                totals = sub.groupby(method_col).size().sort_values(ascending=False).head(topn)
-            totals_df = totals.rename_axis(method_col).reset_index(name="Total")
+                totals_df = (
+                    sub.groupby(method_col, as_index=False)
+                      .size()
+                      .rename(columns={"size": "Total"})
+                      .sort_values("Total", ascending=False)
+                      .head(topn)
+                )
+
             st.dataframe(totals_df, use_container_width=True)
 
-        # Drill-down detalle
+        # Drill-down detalle (listas independientes para evitar dependencias)
         st.markdown("#### Detalle por método y estado")
         dd_cols = st.columns(2)
-        sel_m = dd_cols[0].selectbox("Método", options=y)
-        sel_s = dd_cols[1].selectbox("Estado", options=x)
-        det = sub[(sub[method_col]==sel_m) & (sub[status_col]==sel_s)].copy()
+        methods_list = sorted(sub[method_col].dropna().astype(str).unique())
+        states_list  = sorted(sub[status_col].dropna().astype(str).unique())
+        sel_m = dd_cols[0].selectbox("Método", options=methods_list, key=f"m_{code}")
+        sel_s = dd_cols[1].selectbox("Estado", options=states_list, key=f"s_{code}")
+        det = sub[(sub[method_col] == sel_m) & (sub[status_col] == sel_s)].copy()
         st.dataframe(det.head(500), use_container_width=True)
         st.download_button(
             "⬇️ Descargar detalle (CSV)",
             data=det.to_csv(index=False).encode("utf-8"),
             file_name=f"detalle_{code}_{sel_m}_{sel_s}.csv",
-            mime="text/csv"
+            mime="text/csv",
+            key=f"dl_{code}_{sel_m}_{sel_s}"
         )
