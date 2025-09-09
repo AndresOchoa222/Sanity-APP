@@ -1,4 +1,3 @@
-
 # app_v2.py — CAGE Code Dashboard (interactivo, v2)
 # Ejecuta: streamlit run app_v2.py
 import io, json
@@ -247,16 +246,21 @@ for code, tab in zip(selected_codes, tabs):
         )
         st.plotly_chart(heat, use_container_width=True)
 
-        # Top-N métodos
+        # Top-N métodos (FIX aplicado)
         st.markdown("#### Top-N métodos por total")
-        topn = st.slider("N", min_value=3, max_value=max(3, len(y)), value=min(10, len(y)))
-        if agg_col:
-            totals = sub.groupby(method_col)[agg_col].sum().sort_values(ascending=False).head(topn)
+        n_methods = sub[method_col].nunique()
+        if n_methods == 0:
+            st.info("No hay métodos para este código con los filtros actuales.")
         else:
-            totals = sub.groupby(method_col).size().sort_values(ascending=False).head(topn)
-        st.dataframe(totals.reset_index(names=[method_col, "Total"]), use_container_width=True)
+            topn = st.slider("N", min_value=1, max_value=max(1, n_methods), value=min(10, n_methods))
+            if agg_col:
+                totals = sub.groupby(method_col)[agg_col].sum().sort_values(ascending=False).head(topn)
+            else:
+                totals = sub.groupby(method_col).size().sort_values(ascending=False).head(topn)
+            totals_df = totals.rename_axis(method_col).reset_index(name="Total")
+            st.dataframe(totals_df, use_container_width=True)
 
-        # Drill‑down detalle
+        # Drill-down detalle
         st.markdown("#### Detalle por método y estado")
         dd_cols = st.columns(2)
         sel_m = dd_cols[0].selectbox("Método", options=y)
