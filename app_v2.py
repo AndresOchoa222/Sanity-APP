@@ -8,7 +8,6 @@ import plotly.graph_objects as go
 import streamlit as st
 
 st.set_page_config(page_title="CAGE Code Dashboard v2", layout="wide")
-
 st.title("📊 CAGE Code Dashboard — v2 (más interactivo)")
 
 with st.sidebar:
@@ -17,9 +16,11 @@ with st.sidebar:
 
     st.markdown("---")
     st.header("Ajustes")
-    heatmap_palette = st.selectbox("Paleta del heatmap", [
-        "YlOrRd","Viridis","Cividis","Plasma","Inferno","Magma","Blues","Greens","Reds","Oranges"
-    ], index=0)
+    heatmap_palette = st.selectbox(
+        "Paleta del heatmap",
+        ["YlOrRd","Viridis","Cividis","Plasma","Inferno","Magma","Blues","Greens","Reds","Oranges"],
+        index=0
+    )
     usar_montos = st.toggle("Graficar por monto (si existe la columna)", value=False)
 
 st.caption("Mapea columnas, aplica filtros, revisa KPIs, explora por país y baja resúmenes.")
@@ -47,7 +48,7 @@ def load_df(file):
     df.columns = [str(c).strip() for c in df.columns]
     return df
 
-def coerce_numeric(s):
+def coerce_numeric(s: pd.Series) -> pd.Series:
     if s.dtype == "object":
         cleaned = s.str.replace(r"[.\s]", "", regex=True).str.replace(",", ".", regex=False)
         return pd.to_numeric(cleaned, errors="coerce")
@@ -77,7 +78,7 @@ if any(c == "—" for c in req):
     st.error("Selecciona al menos: Cage Code, Método y Status.")
     st.stop()
 
-# Tipos
+# Tipos y limpieza
 if date_col != "—":
     df[date_col] = pd.to_datetime(df[date_col], errors="coerce")
 
@@ -98,21 +99,19 @@ with st.sidebar:
     st.header("3) Filtros")
     codes_available = sorted([int(x) for x in df["_country_code_num"].dropna().unique()])
     selected_codes = st.multiselect("Códigos (CAGE/País)", options=codes_available, default=codes_available[:3])
+
     has_date = date_col != "—" and pd.api.types.is_datetime64_any_dtype(df[date_col])
-    # Rango de fechas
-    if has_date:
+    if has_date and not df.empty:
         min_d = pd.to_datetime(df[date_col].min()).date()
         max_d = pd.to_datetime(df[date_col].max()).date()
         dr = st.date_input("Rango de fechas", (min_d, max_d))
         if isinstance(dr, tuple) and len(dr) == 2:
             df = df[(df[date_col].dt.date >= dr[0]) & (df[date_col].dt.date <= dr[1])]
 
-    # Estado y método
     statuses = sorted(df[status_col].dropna().unique())
     methods  = sorted(df[method_col].dropna().unique())
     sel_status = st.multiselect("Estados", options=statuses, default=statuses)
     sel_methods = st.multiselect("Métodos de pago", options=methods, default=methods)
-
     df = df[df[status_col].isin(sel_status) & df[method_col].isin(sel_methods)]
 
 # Agregación
@@ -142,6 +141,7 @@ total_val = df[agg_col].sum(min_count=1) if agg_col else float(len(df))
 unique_methods = df[method_col].nunique()
 unique_status  = df[status_col].nunique()
 date_span = ""
+has_date = date_col != "—" and pd.api.types.is_datetime64_any_dtype(df[date_col])
 if has_date and not df.empty:
     date_span = f"{pd.to_datetime(df[date_col].min()).date()} → {pd.to_datetime(df[date_col].max()).date()}"
 
@@ -208,12 +208,11 @@ for code, tab in zip(selected_codes, tabs):
 
         # Barras apiladas método × estado
         if agg_col:
-            ct = sub.groupby([method_col, status_col])[agg_col].sum().reset_index()
+            ct = sub.groupby([method_col, status_col], as_index=False)[agg_col].sum()
+            ycol = agg_col
         else:
-            ct = sub.groupby([method_col, status_col]).size().reset_index(name="value")
-            agg_col_tmp = "value"
-            ct.rename(columns={"value": agg_col_tmp}, inplace=True)
-        ycol = agg_col if agg_col else agg_col_tmp
+            ct = sub.groupby([method_col, status_col], as_index=False).size().rename(columns={"size": "value"})
+            ycol = "value"
 
         barfig = px.bar(
             ct, x=method_col, y=ycol, color=status_col, barmode="stack",
@@ -250,7 +249,7 @@ for code, tab in zip(selected_codes, tabs):
         )
         st.plotly_chart(heat, use_container_width=True)
 
-        # Top-N métodos por total — versión robusta (sin reset_index(names=...))
+        # Top-N métodos por total — 100% compatible con pandas 1.x/2.x
         st.markdown("#### Top-N métodos por total")
         n_methods = sub[method_col].nunique()
         if n_methods == 0:
@@ -277,7 +276,7 @@ for code, tab in zip(selected_codes, tabs):
 
             st.dataframe(totals_df, use_container_width=True)
 
-        # Drill-down detalle (listas independientes para evitar dependencias)
+        # Drill-down detalle
         st.markdown("#### Detalle por método y estado")
         dd_cols = st.columns(2)
         methods_list = sorted(sub[method_col].dropna().astype(str).unique())
@@ -293,3 +292,4 @@ for code, tab in zip(selected_codes, tabs):
             mime="text/csv",
             key=f"dl_{code}_{sel_m}_{sel_s}"
         )
+
