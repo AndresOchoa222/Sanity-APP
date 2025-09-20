@@ -1,16 +1,3 @@
-"""
-Heatmap de métodos de pago por país y tipo con interfaz CLI y Streamlit.
-
-Este módulo contiene funciones para cargar un archivo CSV o Excel con
-transacciones, normalizar sus columnas clave y generar mapas de calor
-por método de pago y estado para cada código de país (CAGE) y tipo de
-transacción (DEPOSIT o WITHDRAWAL). Además de la ejecución como script
-de línea de comandos, ofrece una función `run_app` para utilizar la
-aplicación en modo interactivo mediante Streamlit. En este modo, el
-usuario puede cargar un archivo desde el navegador y visualizar los
-gráficos con títulos y descripciones.
-"""
-
 from __future__ import annotations
 
 from pathlib import Path
@@ -195,13 +182,7 @@ def main() -> None:
 
 
 def run_app() -> None:
-    """
-    Ejecuta la aplicación en modo Streamlit.
 
-    En este modo, el usuario puede subir un archivo Excel o CSV y
-    visualiza los mapas de calor para cada país y tipo de transacción
-    disponibles en los datos.
-    """
     import streamlit as st  # type: ignore
     st.title("Heatmaps de métodos de pago")
     st.write(
@@ -242,8 +223,5 @@ def run_app() -> None:
 
 
 if __name__ == "__main__":
-    # Cuando se ejecuta este script con `streamlit run heatmap_app.py`, se inicia la
-    # interfaz web de Streamlit llamando a run_app(). Ejecutar main() aquí
-    # intentaría cargar un CSV fijo (DATA_FILE), que no existe en el entorno de
-    # Streamlit Cloud y produciría un FileNotFoundError.
+  
     run_app()
