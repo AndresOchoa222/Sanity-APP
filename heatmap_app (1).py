@@ -1,4 +1,5 @@
 # ==== AUTENTICACIÓN (con st.secrets) ====
+from __future__ import annotations
 import streamlit as st
 from werkzeug.security import check_password_hash
 
@@ -21,7 +22,7 @@ def login():
             st.error("❌ Usuario o contraseña incorrectos")
 
 # ==== TU APP DE HEATMAP (igual a la tuya) ====
-from __future__ import annotations
+
 from pathlib import Path
 from typing import Dict, Iterable, Optional
 import matplotlib.pyplot as plt
