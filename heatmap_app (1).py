@@ -1,3 +1,43 @@
+import streamlit as st
+import os
+from werkzeug.security import check_password_hash
+
+# === CONFIGURACIÓN DE LOGIN ===
+USERNAME = os.getenv("APP_USER", "ochoa")
+HASHED_PASSWORD = os.getenv("HASHED_PASSWORD")  # guarda aquí el hash real
+
+if "auth" not in st.session_state:
+    st.session_state["auth"] = False
+
+def login():
+    st.title("🔒 Acceso restringido")
+    user = st.text_input("Usuario")
+    pwd = st.text_input("Contraseña", type="password")
+    if st.button("Entrar"):
+        if user == USERNAME and HASHED_PASSWORD and check_password_hash(HASHED_PASSWORD, pwd):
+            st.session_state["auth"] = True
+            st.success("✅ Acceso permitido")
+        else:
+            st.error("❌ Usuario o contraseña incorrectos")
+
+
+def main_app():
+    st.title("Heatmap App 📊")
+    # Aquí sigue tu código original ↓↓↓
+    # import matplotlib, numpy, pandas, etc.
+    # cargar CSV, crear gráficos, etc.
+
+
+if not st.session_state["auth"]:
+    login()
+else:
+    if st.button("Cerrar sesión"):
+        st.session_state["auth"] = False
+        st.experimental_rerun()
+    main_app()
+
+--APP--
+
 from __future__ import annotations
 
 from pathlib import Path
