@@ -36,7 +36,7 @@ else:
         st.experimental_rerun()
     main_app()
 
---APP--
+# APP
 
 from __future__ import annotations
 
