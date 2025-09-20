@@ -1,4 +1,3 @@
-# ==== AUTENTICACIÓN (con st.secrets) ====
 from __future__ import annotations
 import streamlit as st
 from werkzeug.security import check_password_hash
@@ -21,15 +20,12 @@ def login():
         else:
             st.error("❌ Usuario o contraseña incorrectos")
 
-# ==== TU APP DE HEATMAP (igual a la tuya) ====
-
 from pathlib import Path
 from typing import Dict, Iterable, Optional
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-# Column definitions
 DATA_FILE = "LATAM_SF player_payments_table 2025-09-19T2158.csv"
 COL_COUNTRY = "Cage Code"
 COL_METHOD = "Payment Method"
@@ -38,14 +34,12 @@ COL_DATE = "Create Time Minute"
 COL_TYPE = "Type"
 COL_STATUS_TIME = "Status Time Minute"
 
-# Labels and ordering
 COUNTRY_LABEL = {57: "Colombia", 52: "México", 51: "Perú"}
 COUNTRY_CODES: tuple[int, ...] = tuple(COUNTRY_LABEL)
 TYPE_ORDER = ("DEPOSIT", "WITHDRAWAL")
 TYPE_CMAP = {"DEPOSIT": "BuGn", "WITHDRAWAL": "PuRd"}
 SEPARATORS = (",", ";", "|", "\t")
 
-# Matplotlib configuration
 plt.rcParams.update(
     {
         "font.family": "Arial",
@@ -144,7 +138,8 @@ def plot_heatmap(data: pd.DataFrame, country_code: int, trx_type: str, *, show: 
     fig.colorbar(heat, ax=ax, label="Cantidad de trx")
     plt.tight_layout()
     if show:
-        st.pyplot(fig); return None
+        st.pyplot(fig)
+        return None
     return fig
 
 def plot_all_countries(df: pd.DataFrame, codes: Iterable[int] = COUNTRY_CODES) -> None:
@@ -185,11 +180,9 @@ def run_app() -> None:
                     st.pyplot(fig)
                     st.markdown("---")
 
-# ==== PUNTO DE ENTRADA: si no hay auth, muestra login; si hay, corre la app ====
 if not st.session_state["auth"]:
     login()
 else:
-    # botón de logout disponible dentro de la app
     run_app()
     st.divider()
     if st.button("Cerrar sesión"):
